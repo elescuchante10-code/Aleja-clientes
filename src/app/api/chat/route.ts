@@ -53,7 +53,7 @@ ${instruccionDeFase(turnosTotal)}`;
         ...messages,
         { role: "system", content: contexto },
       ],
-      max_tokens: 600,
+      max_tokens: 1024,
       stream: true,
     });
 
