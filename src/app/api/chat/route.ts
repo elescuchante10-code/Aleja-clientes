@@ -50,8 +50,8 @@ ${instruccionDeFase(turnosTotal)}`;
       model: DEEPSEEK_MODEL,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
-        { role: "system", content: contexto },
         ...messages,
+        { role: "system", content: contexto },
       ],
       max_tokens: 600,
       stream: true,
