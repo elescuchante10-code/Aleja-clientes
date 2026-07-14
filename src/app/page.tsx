@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import moment from "moment";
 
 export default function Home() {
   const [messages, setMessages] = useState<
@@ -71,6 +70,12 @@ export default function Home() {
     }
   };
 
+  function formatTime(timestamp) {
+    if (!timestamp) return '';
+    const d = new Date(timestamp);
+    return d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
+  }
+
   return (
     <div className="flex flex-col min-h-screen bg-[#F4F1EA]">
       <header className="fixed top-0 w-full bg-white p-4 shadow-md z-50">
@@ -101,7 +106,7 @@ export default function Home() {
                   ))}
                 </div>
                 <span className="text-xs text-gray-500">
-                  {moment(msg.timestamp).format("HH:mm")}
+                  {formatTime(msg.timestamp)}
                 </span>
               </div>
             ))}
