@@ -64,6 +64,12 @@ export default function ChatApp() {
       setMessages((prevMessages) => [...prevMessages, assistantMessage]);
     } catch (error) {
       console.error("Error al enviar el mensaje:", error);
+      const errorMessage = {
+        role: "assistant",
+        content: 'Tuve un problema para responder justo ahora. ¿Puedes intentar de nuevo en un momento?',
+        timestamp: Date.now(),
+      };
+      setMessages((prevMessages) => [...prevMessages, errorMessage]);
     } finally {
       setLoading(false);
       setAnalyzing(false);
