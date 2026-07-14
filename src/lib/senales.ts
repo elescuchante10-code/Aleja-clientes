@@ -68,6 +68,12 @@ export function detectarMomento(
   turnosTotal: number
 ): string {
   const r = respuestaAsistente.toLowerCase();
+  
+  // Nuevas reglas para Etapa 4
+  if (r.includes('retomar en otro momento')) return "CERRADA";
+  if (momentoActual === "GIRO") return "CERRADA";
+
+  // Reglas existentes
   if (r.includes("antes de cerrar, quiero ser transparente")) return "GIRO";
   if (r.includes("déjame ver si lo entendí") || r.includes("déjame ver si entendí")) return "ESPEJO";
   if (r.includes("diagnóstico") && turnosTotal > 5) return "PROPUESTA";
