@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from 'next/image';
+import { FaInstagram, FaTiktok } from 'react-icons/fa6';
 
 export default function ChatApp() {
   const [messages, setMessages] = useState<
@@ -114,8 +115,12 @@ export default function ChatApp() {
             </div>
           </div>
           <div className="flex space-x-2">
-            <a href="https://www.instagram.com/soluciones_deia/" target="_blank" rel="noopener noreferrer" className="bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center text-gris">IG</a>
-            <a href="https://www.tiktok.com/@soluciones.de.ia" target="_blank" rel="noopener noreferrer" className="bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center text-gris">TT</a>
+            <a href="https://www.instagram.com/soluciones_deia/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center text-gris hover:text-morado transition-colors">
+              <FaInstagram size={16} />
+            </a>
+            <a href="https://www.tiktok.com/@soluciones.de.ia" target="_blank" rel="noopener noreferrer" aria-label="TikTok" className="bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center text-gris hover:text-morado transition-colors">
+              <FaTiktok size={16} />
+            </a>
             <a href="https://paz-ortega-ia.vercel.app/" target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-lg overflow-hidden shrink-0">
               <Image
                 src="/paz-ortega-logo.png"
@@ -133,30 +138,48 @@ export default function ChatApp() {
           {messages.map((msg, index) => (
             <div
               key={index}
-              className={`flex flex-col ${
-                msg.role === "user" ? "items-end" : "items-start"
+              className={`flex items-end gap-2 ${
+                msg.role === "user" ? "flex-row-reverse" : "flex-row"
               }`}
             >
-              <div
-                className={`p-3 rounded-lg max-w-[80%] ${
-                  msg.role === "user"
-                    ? "bg-naranja text-white rounded-tr-none"
-                    : "bg-morado text-white rounded-tl-none"
-                }`}
-              >
-                {msg.content.split("\n").map((line, i) => (
-                  <p key={i}>{line}</p>
-                ))}
+              {msg.role === "assistant" && (
+                <Image
+                  src="/alejandra-avatar.png"
+                  alt="Alejandra"
+                  width={28}
+                  height={28}
+                  className="rounded-full object-cover shrink-0"
+                />
+              )}
+              <div className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}>
+                <div
+                  className={`p-3 rounded-3xl max-w-[80%] ${
+                    msg.role === "user"
+                      ? "bg-naranja text-white rounded-br-md"
+                      : "bg-morado text-white rounded-bl-md"
+                  }`}
+                >
+                  {msg.content.split("\n").map((line, i) => (
+                    <p key={i}>{line}</p>
+                  ))}
+                </div>
+                <span className="text-xs text-gris">
+                  {formatTime(msg.timestamp)}
+                </span>
               </div>
-              <span className="text-xs text-gris">
-                {formatTime(msg.timestamp)}
-              </span>
             </div>
           ))}
           {loading && (
-            <div className={`flex flex-col items-start`}>
+            <div className="flex items-end gap-2">
+              <Image
+                src="/alejandra-avatar.png"
+                alt="Alejandra"
+                width={28}
+                height={28}
+                className="rounded-full object-cover shrink-0"
+              />
               <div
-                className={`p-3 rounded-lg max-w-[80%] bg-morado text-white rounded-tl-none`}
+                className="p-3 rounded-3xl rounded-bl-md max-w-[80%] bg-morado text-white"
               >
                 {analyzing ? "Analizando..." : (
                   <div className="flex space-x-1">
