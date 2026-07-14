@@ -1,33 +1,34 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import moment from "moment";
 
 export default function Home() {
   const [messages, setMessages] = useState<
     { role: string; content: string; timestamp?: number }[]
-  >([]);
+  >(() => {
+    const savedMessages = localStorage.getItem("aria_chat_history");
+    if (savedMessages) {
+      return JSON.parse(savedMessages);
+    } else {
+      // Mensaje inicial
+      return [
+        {
+          role: "assistant",
+          content:
+            "Hola, soy Alejandra, el sistema de inteligencia artificial de Paz Ortega.\n[IA · no soy una persona]\n\nPaz Ortega ayuda a empresas y personas a usar la IA de forma ordenada y con propósito: diseñamos la política, construimos las plataformas y las acompañamos.\n\nAntes de contarte qué hacemos, me gustaría entender qué te trae por aquí. ¿Me cuentas un poco?",
+          timestamp: Date.now(),
+        },
+      ];
+    }
+  });
   const [inputValue, setInputValue] = useState("");
   const [loading, setLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
 
   useEffect(() => {
-    const savedMessages = localStorage.getItem("aria_chat_history");
-    if (savedMessages) {
-      setMessages(JSON.parse(savedMessages));
-    } else {
-      // Mensaje inicial
-      const initialMessage = {
-        role: "assistant",
-        content:
-          "Hola, soy Alejandra, el sistema de inteligencia artificial de Paz Ortega.\n[IA · no soy una persona]\n\nPaz Ortega ayuda a empresas y personas a usar la IA de forma ordenada y con propósito: diseñamos la política, construimos las plataformas y las acompañamos.\n\nAntes de contarte qué hacemos, me gustaría entender qué te trae por aquí. ¿Me cuentas un poco?",
-        timestamp: Date.now(),
-      };
-      setMessages([initialMessage]);
-      localStorage.setItem("aria_chat_history", JSON.stringify([initialMessage]));
-    }
-  }, []);
+    localStorage.setItem("aria_chat_history", JSON.stringify(messages));
+  }, [messages]);
 
   const sendMessage = async () => {
     if (!inputValue.trim()) return;
@@ -36,7 +37,6 @@ export default function Home() {
     const updatedMessages = [...messages, newMessage];
 
     setMessages(updatedMessages);
-    localStorage.setItem("aria_chat_history", JSON.stringify(updatedMessages));
     setInputValue("");
 
     setLoading(true);
@@ -63,7 +63,6 @@ export default function Home() {
       const data = await response.json();
       const assistantMessage = { role: "assistant", content: data.respuesta, timestamp: Date.now() };
       setMessages((prevMessages) => [...prevMessages, assistantMessage]);
-      localStorage.setItem("aria_chat_history", JSON.stringify([...updatedMessages, assistantMessage]));
     } catch (error) {
       console.error("Error al enviar el mensaje:", error);
     } finally {
