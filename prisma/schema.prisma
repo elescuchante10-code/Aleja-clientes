@@ -1,0 +1,40 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Conversacion {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sessionId String @unique
+
+  // Estado conversacional (momento, no embudo rígido)
+  momento String @default("APERTURA")
+  // APERTURA | ESCUCHA | ESPEJO | PROPUESTA | GIRO | CERRADA
+
+  // Señales extraídas durante la conversación
+  sector  String?
+  tamano  String?
+  senalG  String? // "usa_ia_sin_politica" | "tiene_politica" | "sin_ia"
+  senalL  String? // "manual" | "parcial" | "integrado"
+  senalF  String? // "excel" | "software" | "problema_inventario"
+  senalB  String? // "no_medido" | "mencionado" | "problema_detectado"
+
+  // Consentimiento de datos (Ley 1581) — la captura del dato en sí es Etapa 3
+  aceptoPolitica Boolean   @default(false)
+  aceptadoAt     DateTime?
+
+  // Historial completo de la conversación
+  turnos      Json // [{role, content, timestamp}]
+  turnosTotal Int  @default(0)
+
+  // Inteligencia de mercado
+  necesidadNoVista String? // temas fuera de portafolio mencionados espontáneamente
+
+  @@map("conversaciones")
+}

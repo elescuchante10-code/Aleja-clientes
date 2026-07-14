@@ -21,6 +21,13 @@ export default function ChatApp() {
       ];
     }
   });
+  const [sessionId] = useState<string>(() => {
+    const existing = localStorage.getItem("aria_session_id");
+    if (existing) return existing;
+    const nuevo = crypto.randomUUID();
+    localStorage.setItem("aria_session_id", nuevo);
+    return nuevo;
+  });
   const [inputValue, setInputValue] = useState("");
   const [loading, setLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
@@ -52,6 +59,7 @@ export default function ChatApp() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: updatedMessages.map(({ role, content }) => ({ role, content })),
+          sessionId,
         }),
       });
 
