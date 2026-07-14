@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { getDeepseekClient, DEEPSEEK_MODEL } from "@/lib/deepseek";
 import { SYSTEM_PROMPT } from "@/lib/systemPrompt";
 import { prisma } from "@/lib/prisma";
@@ -46,7 +46,7 @@ Señal B: ${conv?.senalB ?? "sin señal"}
 
 ${instruccionDeFase(turnosTotal)}`;
 
-    const response = await getDeepseekClient().chat.completions.create({
+    const streamCompletion = await getDeepseekClient().chat.completions.create({
       model: DEEPSEEK_MODEL,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
@@ -54,83 +54,113 @@ ${instruccionDeFase(turnosTotal)}`;
         ...messages,
       ],
       max_tokens: 600,
+      stream: true,
     });
 
-    const textoRespuesta = response.choices[0].message.content ?? "";
+    let textoRespuesta = "";
+    let resolverTextoCompleto: (texto: string) => void;
+    const textoCompletoPromise = new Promise<string>((resolve) => {
+      resolverTextoCompleto = resolve;
+    });
 
-    if (sessionId) {
-      try {
-        const ultimoMensajeUsuario =
-          [...messages].reverse().find((m: { role: string }) => m.role === "user")
-            ?.content ?? "";
-        const nuevasSenales = extraerSenales(
-          `${ultimoMensajeUsuario} ${textoRespuesta}`,
-          conv
-        );
-        const nuevoMomento = detectarMomento(
-          textoRespuesta,
-          conv?.momento ?? "APERTURA",
-          turnosTotal
-        );
-        const turnosActualizados = [
-          ...messages,
-          { role: "assistant", content: textoRespuesta, timestamp: new Date().toISOString() },
-        ];
-
-        const avisoPoliticaDado = conv?.aceptoPolitica || detectarAvisoPolitica(textoRespuesta.toLowerCase());
-        const consentimientoNuevo = avisoPoliticaDado && !conv?.aceptoPolitica;
-
-        const updateData: Prisma.ConversacionUpdateInput = {
-          turnos: turnosActualizados,
-          turnosTotal: { increment: 1 },
-          momento: nuevoMomento,
-          ...nuevasSenales,
-          ...(consentimientoNuevo ? { aceptoPolitica: true, aceptadoAt: new Date() } : {}),
-        };
-
-        await prisma.conversacion.upsert({
-          where: { sessionId },
-          update: updateData,
-          create: {
-            sessionId,
-            momento: nuevoMomento,
-            turnos: turnosActualizados,
-            turnosTotal: 1,
-            ...nuevasSenales,
-            ...(avisoPoliticaDado && { aceptoPolitica: true, aceptadoAt: new Date() })
-          },
-        });
-
-        if (avisoPoliticaDado && conv) {
-          const contacto = extraerContacto(ultimoMensajeUsuario);
-          if (contacto) {
-            try {
-              await prisma.lead.upsert({
-                where: { conversacionId: conv.id },
-                update: {
-                  nombre: null,
-                  contacto: contacto.valor,
-                  tipoContacto: contacto.tipoContacto,
-                },
-                create: {
-                  conversacionId: conv.id,
-                  nombre: null,
-                  contacto: contacto.valor,
-                  tipoContacto: contacto.tipoContacto,
-                },
-              });
-            } catch (leadError) {
-              console.error("Error al guardar el lead en la base de datos:", leadError);
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          for await (const chunk of streamCompletion) {
+            const delta = chunk.choices[0]?.delta?.content ?? "";
+            if (delta) {
+              textoRespuesta += delta;
+              controller.enqueue(encoder.encode(delta));
             }
           }
+        } catch (streamError) {
+          console.error("Error al leer el stream de DeepSeek:", streamError);
+        } finally {
+          controller.close();
+          resolverTextoCompleto(textoRespuesta);
         }
+      },
+    });
 
-      } catch (dbError) {
-        console.error("Error al guardar en la base de datos:", dbError);
-      }
+    if (sessionId) {
+      after(async () => {
+        const textoFinal = await textoCompletoPromise;
+        try {
+          const ultimoMensajeUsuario =
+            [...messages].reverse().find((m: { role: string }) => m.role === "user")
+              ?.content ?? "";
+          const nuevasSenales = extraerSenales(
+            `${ultimoMensajeUsuario} ${textoFinal}`,
+            conv
+          );
+          const nuevoMomento = detectarMomento(
+            textoFinal,
+            conv?.momento ?? "APERTURA",
+            turnosTotal
+          );
+          const turnosActualizados = [
+            ...messages,
+            { role: "assistant", content: textoFinal, timestamp: new Date().toISOString() },
+          ];
+
+          const avisoPoliticaDado = conv?.aceptoPolitica || detectarAvisoPolitica(textoFinal.toLowerCase());
+          const consentimientoNuevo = avisoPoliticaDado && !conv?.aceptoPolitica;
+
+          const updateData: Prisma.ConversacionUpdateInput = {
+            turnos: turnosActualizados,
+            turnosTotal: { increment: 1 },
+            momento: nuevoMomento,
+            ...nuevasSenales,
+            ...(consentimientoNuevo ? { aceptoPolitica: true, aceptadoAt: new Date() } : {}),
+          };
+
+          const convGuardada = await prisma.conversacion.upsert({
+            where: { sessionId },
+            update: updateData,
+            create: {
+              sessionId,
+              momento: nuevoMomento,
+              turnos: turnosActualizados,
+              turnosTotal: 1,
+              ...nuevasSenales,
+              ...(avisoPoliticaDado && { aceptoPolitica: true, aceptadoAt: new Date() })
+            },
+          });
+
+          if (avisoPoliticaDado) {
+            const contacto = extraerContacto(ultimoMensajeUsuario);
+            if (contacto) {
+              try {
+                await prisma.lead.upsert({
+                  where: { conversacionId: convGuardada.id },
+                  update: {
+                    nombre: null,
+                    contacto: contacto.valor,
+                    tipoContacto: contacto.tipoContacto,
+                  },
+                  create: {
+                    conversacionId: convGuardada.id,
+                    nombre: null,
+                    contacto: contacto.valor,
+                    tipoContacto: contacto.tipoContacto,
+                  },
+                });
+              } catch (leadError) {
+                console.error("Error al guardar el lead en la base de datos:", leadError);
+              }
+            }
+          }
+
+        } catch (dbError) {
+          console.error("Error al guardar en la base de datos:", dbError);
+        }
+      });
     }
 
-    return NextResponse.json({ respuesta: textoRespuesta });
+    return new NextResponse(stream, {
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
   } catch (error) {
     console.error("Error en la llamada a DeepSeek:", error);
     return new NextResponse(

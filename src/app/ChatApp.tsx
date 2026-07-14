@@ -32,7 +32,7 @@ export default function ChatApp() {
   });
   const [inputValue, setInputValue] = useState("");
   const [loading, setLoading] = useState(false);
-  const [analyzing, setAnalyzing] = useState(false);
+  const [streamingText, setStreamingText] = useState("");
 
   useEffect(() => {
     localStorage.setItem("aria_chat_history", JSON.stringify(messages));
@@ -41,7 +41,7 @@ export default function ChatApp() {
   const bottomRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading, analyzing]);
+  }, [messages, loading, streamingText]);
 
   const sendMessage = async () => {
     if (!inputValue.trim()) return;
@@ -51,14 +51,8 @@ export default function ChatApp() {
 
     setMessages(updatedMessages);
     setInputValue("");
-
     setLoading(true);
-
-    // Simular delay
-    const delay = Math.min(1800, 800 + (newMessage.content.length * 500) / 20);
-    setTimeout(() => {
-      setAnalyzing(true);
-    }, delay);
+    setStreamingText("");
 
     try {
       const response = await fetch("/api/chat", {
@@ -70,12 +64,22 @@ export default function ChatApp() {
         }),
       });
 
-      if (!response.ok) {
+      if (!response.ok || !response.body) {
         throw new Error("Error en la respuesta del servidor");
       }
 
-      const data = await response.json();
-      const assistantMessage = { role: "assistant", content: data.respuesta, timestamp: Date.now() };
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let textoCompleto = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        textoCompleto += decoder.decode(value, { stream: true });
+        setStreamingText(textoCompleto);
+      }
+
+      const assistantMessage = { role: "assistant", content: textoCompleto, timestamp: Date.now() };
       setMessages((prevMessages) => [...prevMessages, assistantMessage]);
     } catch (error) {
       console.error("Error al enviar el mensaje:", error);
@@ -87,7 +91,7 @@ export default function ChatApp() {
       setMessages((prevMessages) => [...prevMessages, errorMessage]);
     } finally {
       setLoading(false);
-      setAnalyzing(false);
+      setStreamingText("");
     }
   };
 
@@ -181,7 +185,9 @@ export default function ChatApp() {
               <div
                 className="p-3 rounded-3xl rounded-bl-md max-w-[80%] bg-morado text-white"
               >
-                {analyzing ? "Analizando..." : (
+                {streamingText ? (
+                  streamingText.split("\n").map((line, i) => <p key={i}>{line}</p>)
+                ) : (
                   <div className="flex space-x-1">
                     <span className="dot"></span>
                     <span className="dot"></span>
