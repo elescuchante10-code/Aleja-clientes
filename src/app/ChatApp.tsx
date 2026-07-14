@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Image from 'next/image';
 
 export default function ChatApp() {
   const [messages, setMessages] = useState<
@@ -35,6 +36,11 @@ export default function ChatApp() {
   useEffect(() => {
     localStorage.setItem("aria_chat_history", JSON.stringify(messages));
   }, [messages]);
+
+  const bottomRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, loading, analyzing]);
 
   const sendMessage = async () => {
     if (!inputValue.trim()) return;
@@ -91,78 +97,107 @@ export default function ChatApp() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#F4F1EA]">
-      <header className="fixed top-0 w-full bg-white p-4 shadow-md z-50">
-        <div className="container mx-auto flex justify-between items-center">
-          <h1 className="text-lg font-semibold">Alejandra</h1>
+    <div className="flex flex-col h-dvh bg-crema">
+      <header className="sticky top-0 w-full bg-white p-4 shadow-md z-50">
+        <div className="w-full max-w-lg mx-auto flex justify-between items-center px-2">
+          <div className="flex items-center space-x-3">
+            <Image
+              src="/alejandra-avatar.png"
+              alt="Alejandra Avatar"
+              width={44}
+              height={44}
+              className="rounded-full object-cover"
+            />
+            <div>
+              <h1 className="font-semibold">Alejandra</h1>
+              <p className="text-sm text-gris">Asistente de Inteligencia Artificial de Paz Ortega</p>
+            </div>
+          </div>
+          <div className="flex space-x-2">
+            <a href="https://www.instagram.com/soluciones_deia/" target="_blank" rel="noopener noreferrer" className="bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center text-gris">IG</a>
+            <a href="https://www.tiktok.com/@soluciones.de.ia" target="_blank" rel="noopener noreferrer" className="bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center text-gris">TT</a>
+            <a href="https://paz-ortega-ia.vercel.app/" target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-lg overflow-hidden shrink-0">
+              <Image
+                src="/paz-ortega-logo.png"
+                alt="Paz Ortega"
+                width={32}
+                height={32}
+                className="w-full h-full object-cover"
+              />
+            </a>
+          </div>
         </div>
       </header>
-      <main className="container mx-auto flex flex-col items-center justify-center pt-24 pb-16">
-        <div className="w-full max-w-md px-4">
-          <div className="space-y-4 mb-8">
-            {messages.map((msg, index) => (
+      <main className="flex-1 overflow-y-auto">
+        <div className="w-full max-w-lg mx-auto space-y-4 px-2 py-4">
+          {messages.map((msg, index) => (
+            <div
+              key={index}
+              className={`flex flex-col ${
+                msg.role === "user" ? "items-end" : "items-start"
+              }`}
+            >
               <div
-                key={index}
-                className={`flex flex-col ${
-                  msg.role === "user" ? "items-end" : "items-start"
+                className={`p-3 rounded-lg max-w-[80%] ${
+                  msg.role === "user"
+                    ? "bg-naranja text-white rounded-tr-none"
+                    : "bg-morado text-white rounded-tl-none"
                 }`}
               >
-                <div
-                  className={`p-3 rounded-lg max-w-[80%] ${
-                    msg.role === "user"
-                      ? "bg-teal-500 text-white rounded-tr-none"
-                      : "bg-white border border-gray-200 rounded-tl-none"
-                  }`}
-                >
-                  {msg.content.split("\n").map((line, i) => (
-                    <p key={i}>{line}</p>
-                  ))}
-                </div>
-                <span className="text-xs text-gray-500">
-                  {formatTime(msg.timestamp)}
-                </span>
+                {msg.content.split("\n").map((line, i) => (
+                  <p key={i}>{line}</p>
+                ))}
               </div>
-            ))}
-            {loading && (
-              <div className={`flex flex-col items-start`}>
-                <div
-                  className={`p-3 rounded-lg max-w-[80%] bg-white border border-gray-200 rounded-tl-none`}
-                >
-                  {analyzing ? "Analizando..." : (
-                    <div className="flex space-x-1">
-                      <span className="dot"></span>
-                      <span className="dot"></span>
-                      <span className="dot"></span>
-                    </div>
-                  )}
-                </div>
+              <span className="text-xs text-gris">
+                {formatTime(msg.timestamp)}
+              </span>
+            </div>
+          ))}
+          {loading && (
+            <div className={`flex flex-col items-start`}>
+              <div
+                className={`p-3 rounded-lg max-w-[80%] bg-morado text-white rounded-tl-none`}
+              >
+                {analyzing ? "Analizando..." : (
+                  <div className="flex space-x-1">
+                    <span className="dot"></span>
+                    <span className="dot"></span>
+                    <span className="dot"></span>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              sendMessage();
-            }}
-            className="flex flex-col space-y-2"
-          >
+            </div>
+          )}
+          <div ref={bottomRef} />
+        </div>
+      </main>
+      <div className="w-full bg-beige-oscuro z-50">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            sendMessage();
+          }}
+          className="w-full max-w-lg mx-auto px-2 py-3"
+        >
+          <div className="flex items-end space-x-2">
             <textarea
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               placeholder="Cuéntame sobre tu empresa..."
               rows={1}
               maxLength={500}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-teal-500 resize-y"
+              className="w-full p-3 border-none rounded-full focus:outline-none focus:ring-2 focus:ring-morado resize-none bg-white text-sm placeholder:text-gris"
             ></textarea>
             <button
               type="submit"
-              className="bg-teal-500 text-white px-4 py-2 rounded-lg self-end hover:bg-teal-600 transition-colors"
+              disabled={!inputValue.trim()}
+              className={`shrink-0 w-11 h-11 flex items-center justify-center bg-morado text-white rounded-full hover:bg-purple-700 transition-colors ${!inputValue.trim() && 'opacity-50 cursor-not-allowed'}`}
             >
-              Enviar
+              ➤
             </button>
-          </form>
-        </div>
-      </main>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
