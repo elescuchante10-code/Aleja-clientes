@@ -15,7 +15,7 @@ export default function ChatApp() {
         {
           role: "assistant",
           content:
-            "Hola, soy Alejandra, el sistema de inteligencia artificial de Paz Ortega.\n[IA · no soy una persona]\n\nPaz Ortega ayuda a empresas y personas a usar la IA de forma ordenada y con propósito: diseñamos la política, construimos las plataformas y las acompañamos.\n\nAntes de contarte qué hacemos, me gustaría entender qué te trae por aquí. ¿Me cuentas un poco?",
+            "Hola, soy Alejandra, el sistema de inteligencia artificial de Paz Ortega.\n\nPaz Ortega ayuda a empresas y personas a usar la IA de forma ordenada y con propósito: diseñamos la política, construimos las plataformas y las acompañamos.\n\nAntes de contarte qué hacemos, me gustaría entender qué te trae por aquí. ¿Me cuentas un poco?",
           timestamp: Date.now(),
         },
       ];
@@ -86,8 +86,7 @@ export default function ChatApp() {
     <div className="flex flex-col min-h-screen bg-[#F4F1EA]">
       <header className="fixed top-0 w-full bg-white p-4 shadow-md z-50">
         <div className="container mx-auto flex justify-between items-center">
-          <h1 className="text-lg font-semibold">Paz Ortega · Alejandra</h1>
-          <span className="bg-teal-500 text-white px-2 py-1 rounded-full text-sm">● IA activa · no soy una persona</span>
+          <h1 className="text-lg font-semibold">Alejandra</h1>
         </div>
       </header>
       <main className="container mx-auto flex flex-col items-center justify-center pt-24 pb-16">
