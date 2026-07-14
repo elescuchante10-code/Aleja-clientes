@@ -74,3 +74,26 @@ export function detectarMomento(
   if (turnosTotal >= 2 && momentoActual === "APERTURA") return "ESCUCHA";
   return momentoActual;
 }
+
+export function detectarAvisoPolitica(texto: string): boolean {
+  const t = texto.toLowerCase();
+  return t.includes('ley 1581') && t.includes('guarda');
+}
+
+export function extraerContacto(texto: string) {
+  const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+  const celularRegex = /3\d{1}(?:[-\s]?\d){8}/;
+
+  const emailMatch = texto.match(emailRegex);
+  if (emailMatch) {
+    return { tipoContacto: "email", valor: emailMatch[0] };
+  }
+
+  const celularMatch = texto.match(celularRegex);
+  if (celularMatch) {
+    const numeroNormalizado = celularMatch[0].replace(/\s|\-/g, '');
+    return { tipoContacto: "celular", valor: numeroNormalizado };
+  }
+
+  return null;
+}

@@ -36,5 +36,21 @@ model Conversacion {
   // Inteligencia de mercado
   necesidadNoVista String? // temas fuera de portafolio mencionados espontáneamente
 
+  lead Lead?
+
   @@map("conversaciones")
+}
+
+model Lead {
+  id            String   @id @default(cuid())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  conversacionId String   @unique
+  nombre        String?
+  contacto      String
+  tipoContacto  String
+
+  conversacion Conversacion @relation(fields: [conversacionId], references: [id])
+
+  @@map("leads")
 }

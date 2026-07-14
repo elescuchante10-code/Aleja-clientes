@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { getDeepseekClient, DEEPSEEK_MODEL } from "@/lib/deepseek";
 import { SYSTEM_PROMPT } from "@/lib/systemPrompt";
 import { prisma } from "@/lib/prisma";
-import { extraerSenales, detectarMomento } from "@/lib/senales";
+import { Prisma } from "@prisma/client";
+import { extraerSenales, detectarMomento, detectarAvisoPolitica, extraerContacto } from "@/lib/senales";
 
 function instruccionDeFase(turnosTotal: number) {
   if (turnosTotal < 3) {
@@ -76,22 +77,54 @@ ${instruccionDeFase(turnosTotal)}`;
           { role: "assistant", content: textoRespuesta, timestamp: new Date().toISOString() },
         ];
 
+        const avisoPoliticaDado = conv?.aceptoPolitica || detectarAvisoPolitica(textoRespuesta.toLowerCase());
+        const consentimientoNuevo = avisoPoliticaDado && !conv?.aceptoPolitica;
+
+        const updateData: Prisma.ConversacionUpdateInput = {
+          turnos: turnosActualizados,
+          turnosTotal: { increment: 1 },
+          momento: nuevoMomento,
+          ...nuevasSenales,
+          ...(consentimientoNuevo ? { aceptoPolitica: true, aceptadoAt: new Date() } : {}),
+        };
+
         await prisma.conversacion.upsert({
           where: { sessionId },
-          update: {
-            turnos: turnosActualizados,
-            turnosTotal: { increment: 1 },
-            momento: nuevoMomento,
-            ...nuevasSenales,
-          },
+          update: updateData,
           create: {
             sessionId,
             momento: nuevoMomento,
             turnos: turnosActualizados,
             turnosTotal: 1,
             ...nuevasSenales,
+            ...(avisoPoliticaDado && { aceptoPolitica: true, aceptadoAt: new Date() })
           },
         });
+
+        if (avisoPoliticaDado && conv) {
+          const contacto = extraerContacto(ultimoMensajeUsuario);
+          if (contacto) {
+            try {
+              await prisma.lead.upsert({
+                where: { conversacionId: conv.id },
+                update: {
+                  nombre: null,
+                  contacto: contacto.valor,
+                  tipoContacto: contacto.tipoContacto,
+                },
+                create: {
+                  conversacionId: conv.id,
+                  nombre: null,
+                  contacto: contacto.valor,
+                  tipoContacto: contacto.tipoContacto,
+                },
+              });
+            } catch (leadError) {
+              console.error("Error al guardar el lead en la base de datos:", leadError);
+            }
+          }
+        }
+
       } catch (dbError) {
         console.error("Error al guardar en la base de datos:", dbError);
       }
