@@ -2,7 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from 'next/image';
-import { FaInstagram, FaTiktok } from 'react-icons/fa6';
+import { FaInstagram, FaTiktok, FaArrowRotateLeft } from 'react-icons/fa6';
+
+const MENSAJE_INICIAL = {
+  role: "assistant",
+  content:
+    "Hola, soy Alejandra, el sistema de inteligencia artificial de Paz Ortega.\n\nPaz Ortega ayuda a empresas y personas a usar la IA de forma ordenada y con propósito: diseñamos la política, construimos las plataformas y las acompañamos.\n\nAntes de contarte qué hacemos, me gustaría entender qué te trae por aquí. ¿Me cuentas un poco?",
+};
 
 export default function ChatApp() {
   const [messages, setMessages] = useState<
@@ -12,24 +18,25 @@ export default function ChatApp() {
     if (savedMessages) {
       return JSON.parse(savedMessages);
     } else {
-      // Mensaje inicial
-      return [
-        {
-          role: "assistant",
-          content:
-            "Hola, soy Alejandra, el sistema de inteligencia artificial de Paz Ortega.\n\nPaz Ortega ayuda a empresas y personas a usar la IA de forma ordenada y con propósito: diseñamos la política, construimos las plataformas y las acompañamos.\n\nAntes de contarte qué hacemos, me gustaría entender qué te trae por aquí. ¿Me cuentas un poco?",
-          timestamp: Date.now(),
-        },
-      ];
+      return [{ ...MENSAJE_INICIAL, timestamp: Date.now() }];
     }
   });
-  const [sessionId] = useState<string>(() => {
+  const [sessionId, setSessionId] = useState<string>(() => {
     const existing = localStorage.getItem("aria_session_id");
     if (existing) return existing;
     const nuevo = crypto.randomUUID();
     localStorage.setItem("aria_session_id", nuevo);
     return nuevo;
   });
+
+  function nuevaConversacion() {
+    if (!confirm("¿Empezar una conversación nueva? Se perderá el historial actual.")) return;
+    const nuevo = crypto.randomUUID();
+    localStorage.setItem("aria_session_id", nuevo);
+    localStorage.removeItem("aria_chat_history");
+    setSessionId(nuevo);
+    setMessages([{ ...MENSAJE_INICIAL, timestamp: Date.now() }]);
+  }
   const [inputValue, setInputValue] = useState("");
   const [loading, setLoading] = useState(false);
   const [streamingText, setStreamingText] = useState("");
@@ -143,6 +150,14 @@ export default function ChatApp() {
             </div>
           </div>
           <div className="flex space-x-2">
+            <button
+              onClick={nuevaConversacion}
+              aria-label="Nueva conversación"
+              title="Nueva conversación"
+              className="bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center text-gris hover:text-morado transition-colors"
+            >
+              <FaArrowRotateLeft size={14} />
+            </button>
             <a href="https://www.instagram.com/soluciones_deia/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center text-gris hover:text-morado transition-colors">
               <FaInstagram size={16} />
             </a>
