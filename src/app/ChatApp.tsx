@@ -101,6 +101,30 @@ export default function ChatApp() {
     return d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
   }
 
+  function renderLinea(line: string, key: number) {
+    const urlRegex = /(https?:\/\/[^\s]+)/;
+    const partes = line.split(urlRegex);
+    return (
+      <p key={key}>
+        {partes.map((parte, i) =>
+          /^https?:\/\//.test(parte) ? (
+            <a
+              key={i}
+              href={parte}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline font-medium"
+            >
+              {parte}
+            </a>
+          ) : (
+            parte
+          )
+        )}
+      </p>
+    );
+  }
+
   return (
     <div className="flex flex-col h-dvh bg-crema">
       <header className="sticky top-0 w-full bg-white p-4 shadow-md z-50">
@@ -163,9 +187,7 @@ export default function ChatApp() {
                       : "bg-morado text-white rounded-bl-md"
                   }`}
                 >
-                  {msg.content.split("\n").map((line, i) => (
-                    <p key={i}>{line}</p>
-                  ))}
+                  {msg.content.split("\n").map((line, i) => renderLinea(line, i))}
                 </div>
                 <span className="text-xs text-gris">
                   {formatTime(msg.timestamp)}
@@ -186,7 +208,7 @@ export default function ChatApp() {
                 className="p-3 rounded-3xl rounded-bl-md max-w-[80%] bg-morado text-white"
               >
                 {streamingText ? (
-                  streamingText.split("\n").map((line, i) => <p key={i}>{line}</p>)
+                  streamingText.split("\n").map((line, i) => renderLinea(line, i))
                 ) : (
                   <div className="flex space-x-1">
                     <span className="dot"></span>

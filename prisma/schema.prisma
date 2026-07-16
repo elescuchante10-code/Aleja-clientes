@@ -36,6 +36,12 @@ model Conversacion {
   // Inteligencia de mercado
   necesidadNoVista String? // temas fuera de portafolio mencionados espontáneamente
 
+  // Variables de arquitectura conversacional v3 (gobernadas por backend)
+  creditoDigresion   Int     @default(2) // 0..3
+  profundidadVinculo Int     @default(0) // 0..3
+  deudaDeValor       String  @default("SALDADA") // SALDADA | PENDIENTE
+  espejoEntregado    Boolean @default(false)
+
   lead Lead?
 
   @@map("conversaciones")
