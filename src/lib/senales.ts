@@ -51,7 +51,7 @@ export function extraerSenales(texto: string, conv: SenalesConv): SenalesExtraid
   if (!conv?.senalF) {
     if (/excel|hoja.*cálculo/.test(t)) s.senalF = "excel";
     else if (/siigo|alegra/.test(t)) s.senalF = "software";
-    else if (/diferencia.*inventario|no cuadra/.test(t)) s.senalF = "problema_inventario";
+    else if (/diferencia.*inventario|no cuadra|nunca.*cuadra|no (me |te |le )?cierra|se pierde plata|perdemos plata/.test(t)) s.senalF = "problema_inventario";
   }
 
   if (!conv?.senalB) {
@@ -136,7 +136,7 @@ export function actualizarVariables(
 
   // El usuario expresa dolor / fricción / carga emocional
   const expresaDolor =
-    /cuesta|difícil|complicad|estr[eé]s|agotad|frustr|no doy abasto|desborda|abruma|no alcanzo|demasiado|solo con esto|sola con esto/.test(u);
+    /cuesta|difícil|complicad|estr[eé]s|agotad|frustr|no doy abasto|desborda|abruma|no alcanzo|demasiado|solo con esto|sola con esto|se pierde plata|perdemos plata|sin saber por qu[eé]|me preocupa|no s[eé] (bien )?por qu[eé]|expuesto|riesgo/.test(u);
 
   // Alejandra validó algo real en su turno previo (lenguaje natural, no un guion fijo)
   const validoAntes =
