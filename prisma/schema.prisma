@@ -36,6 +36,10 @@ model Conversacion {
   // Inteligencia de mercado
   necesidadNoVista String? // temas fuera de portafolio mencionados espontáneamente
 
+  // Resumen generado por IA para el panel interno (/admin/leads) — no lo usa
+  // el chatbot. Se calcula una sola vez y queda guardado.
+  resumenIA Json? // { resumen, dolorPrincipal, palabrasClave[], preguntasClave[] }
+
   // Variables de arquitectura conversacional v3 (gobernadas por backend)
   creditoDigresion   Int     @default(2) // 0..3
   profundidadVinculo Int     @default(0) // 0..3
