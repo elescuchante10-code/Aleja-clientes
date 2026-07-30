@@ -4,9 +4,9 @@ import { csvEscape, parseTurnos } from "@/lib/adminLeads";
 import { obtenerOGenerarResumen } from "@/lib/adminSummary";
 
 export async function GET() {
-  const leads = await prisma.lead.findMany({
-    include: { conversacion: true },
-    orderBy: { createdAt: "desc" },
+  const conversaciones = await prisma.conversacion.findMany({
+    include: { lead: true },
+    orderBy: { updatedAt: "desc" },
   });
 
   const columnas = [
@@ -16,7 +16,7 @@ export async function GET() {
     "Sector",
     "Tamaño",
     "Momento",
-    "Fecha",
+    "Última actividad",
     "Resumen",
     "Dolor principal",
     "Palabras clave",
@@ -25,22 +25,22 @@ export async function GET() {
   ];
 
   const filas = [];
-  for (const lead of leads) {
-    const turnos = parseTurnos(lead.conversacion.turnos);
-    const resumen = await obtenerOGenerarResumen(lead.conversacion.id, lead.conversacion.resumenIA, turnos);
+  for (const conv of conversaciones) {
+    const turnos = parseTurnos(conv.turnos);
+    const resumen = await obtenerOGenerarResumen(conv.id, conv.resumenIA, turnos);
     const transcripcion = turnos
       .map((t) => `${t.role === "assistant" ? "Alejandra" : "Cliente"}: ${t.content}`)
       .join("\n");
 
     filas.push(
       [
-        lead.nombre ?? "",
-        lead.contacto,
-        lead.tipoContacto,
-        lead.conversacion.sector ?? "",
-        lead.conversacion.tamano ?? "",
-        lead.conversacion.momento,
-        lead.createdAt.toISOString(),
+        conv.lead?.nombre ?? "",
+        conv.lead?.contacto ?? "",
+        conv.lead?.tipoContacto ?? "",
+        conv.sector ?? "",
+        conv.tamano ?? "",
+        conv.momento,
+        conv.updatedAt.toISOString(),
         resumen.resumen,
         resumen.dolorPrincipal,
         resumen.palabrasClave.join("; "),
@@ -58,7 +58,7 @@ export async function GET() {
   return new NextResponse(BOM + csv, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="leads-paz-ortega-${new Date().toISOString().slice(0, 10)}.csv"`,
+      "Content-Disposition": `attachment; filename="conversaciones-paz-ortega-${new Date().toISOString().slice(0, 10)}.csv"`,
     },
   });
 }

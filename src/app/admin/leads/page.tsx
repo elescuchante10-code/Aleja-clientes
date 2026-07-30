@@ -6,7 +6,7 @@ import { obtenerOGenerarResumen, type ResumenIA } from "@/lib/adminSummary";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Leads — Paz Ortega",
+  title: "Conversaciones — Paz Ortega",
 };
 
 const MOMENTO_LABEL: Record<string, string> = {
@@ -27,19 +27,18 @@ function formatFecha(fecha: Date) {
 }
 
 export default async function LeadsPage() {
-  const leads = await prisma.lead.findMany({
-    include: { conversacion: true },
-    orderBy: { createdAt: "desc" },
+  const conversaciones = await prisma.conversacion.findMany({
+    include: { lead: true },
+    orderBy: { updatedAt: "desc" },
   });
+
+  const conContacto = conversaciones.filter((c) => c.lead).length;
 
   // Se calcula una sola vez por conversación: si ya está guardado, solo se lee.
   const resumenes = new Map<string, ResumenIA>();
-  for (const lead of leads) {
-    const turnos = parseTurnos(lead.conversacion.turnos);
-    resumenes.set(
-      lead.conversacion.id,
-      await obtenerOGenerarResumen(lead.conversacion.id, lead.conversacion.resumenIA, turnos)
-    );
+  for (const conv of conversaciones) {
+    const turnos = parseTurnos(conv.turnos);
+    resumenes.set(conv.id, await obtenerOGenerarResumen(conv.id, conv.resumenIA, turnos));
   }
 
   return (
@@ -47,10 +46,10 @@ export default async function LeadsPage() {
       <div className="mx-auto max-w-4xl">
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold text-[#171717]">Leads</h1>
+            <h1 className="text-2xl font-semibold text-[#171717]">Conversaciones</h1>
             <p className="text-sm text-gris">
-              {leads.length} {leads.length === 1 ? "cliente potencial" : "clientes potenciales"} capturados por
-              Alejandra
+              {conversaciones.length} {conversaciones.length === 1 ? "conversación" : "conversaciones"} · {conContacto}{" "}
+              con contacto capturado
             </p>
           </div>
           <a
@@ -61,39 +60,54 @@ export default async function LeadsPage() {
           </a>
         </div>
 
-        {leads.length === 0 ? (
-          <p className="rounded-2xl bg-white/60 p-6 text-sm text-gris">Todavía no hay leads registrados.</p>
+        {conversaciones.length === 0 ? (
+          <p className="rounded-2xl bg-white/60 p-6 text-sm text-gris">Todavía no hay conversaciones registradas.</p>
         ) : (
           <div className="flex flex-col gap-4">
-            {leads.map((lead) => {
-              const turnos = parseTurnos(lead.conversacion.turnos);
-              const resumen = resumenes.get(lead.conversacion.id);
+            {conversaciones.map((conv) => {
+              const turnos = parseTurnos(conv.turnos);
+              const resumen = resumenes.get(conv.id);
               const senales = [
-                lead.conversacion.sector && { label: lead.conversacion.sector },
-                lead.conversacion.tamano && { label: lead.conversacion.tamano },
-                labelSenal("G", lead.conversacion.senalG) && { label: labelSenal("G", lead.conversacion.senalG)! },
-                labelSenal("L", lead.conversacion.senalL) && { label: labelSenal("L", lead.conversacion.senalL)! },
-                labelSenal("F", lead.conversacion.senalF) && { label: labelSenal("F", lead.conversacion.senalF)! },
-                labelSenal("B", lead.conversacion.senalB) && { label: labelSenal("B", lead.conversacion.senalB)! },
+                conv.sector && { label: conv.sector },
+                conv.tamano && { label: conv.tamano },
+                labelSenal("G", conv.senalG) && { label: labelSenal("G", conv.senalG)! },
+                labelSenal("L", conv.senalL) && { label: labelSenal("L", conv.senalL)! },
+                labelSenal("F", conv.senalF) && { label: labelSenal("F", conv.senalF)! },
+                labelSenal("B", conv.senalB) && { label: labelSenal("B", conv.senalB)! },
               ].filter((s): s is { label: string } => Boolean(s));
 
               return (
                 <details
-                  key={lead.id}
+                  key={conv.id}
                   className="group rounded-2xl border border-beige-oscuro bg-white/70 p-5 open:bg-white"
                 >
                   <summary className="flex list-none cursor-pointer flex-wrap items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
                     <div>
                       <p className="font-medium text-[#171717]">
-                        {lead.nombre ?? "Sin nombre"} <span className="font-normal text-gris">· {lead.contacto}</span>
+                        {conv.lead ? (
+                          <>
+                            {conv.lead.nombre ?? "Sin nombre"}{" "}
+                            <span className="font-normal text-gris">· {conv.lead.contacto}</span>
+                          </>
+                        ) : (
+                          <span className="text-gris italic">Sin contacto todavía</span>
+                        )}
                       </p>
                       <p className="text-xs text-gris">
-                        {lead.tipoContacto} · {formatFecha(lead.createdAt)}
+                        {conv.lead ? `${conv.lead.tipoContacto} · ` : ""}
+                        {turnos.length} {turnos.length === 1 ? "mensaje" : "mensajes"} · {formatFecha(conv.updatedAt)}
                       </p>
                     </div>
-                    <span className="rounded-full bg-beige-oscuro px-3 py-1 text-xs font-medium text-[#171717]">
-                      {MOMENTO_LABEL[lead.conversacion.momento] ?? lead.conversacion.momento}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      {conv.lead && (
+                        <span className="rounded-full bg-morado px-3 py-1 text-xs font-medium text-white">
+                          Contacto
+                        </span>
+                      )}
+                      <span className="rounded-full bg-beige-oscuro px-3 py-1 text-xs font-medium text-[#171717]">
+                        {MOMENTO_LABEL[conv.momento] ?? conv.momento}
+                      </span>
+                    </div>
                   </summary>
 
                   <div className="mt-4 flex flex-col gap-4 border-t border-beige-oscuro pt-4">
@@ -133,28 +147,32 @@ export default async function LeadsPage() {
                       </div>
                     )}
 
-                    <details className="rounded-xl border border-beige-oscuro/70">
-                      <summary className="cursor-pointer list-none px-4 py-2 text-xs font-medium text-gris [&::-webkit-details-marker]:hidden">
-                        Ver conversación completa ({turnos.length} mensajes)
-                      </summary>
-                      <div className="flex flex-col gap-2 p-4 pt-0">
-                        {turnos.map((turno, i) => (
-                          <div
-                            key={i}
-                            className={`max-w-[85%] rounded-2xl px-4 py-2 text-sm ${
-                              turno.role === "assistant"
-                                ? "self-start bg-morado/10 text-[#171717]"
-                                : "self-end bg-naranja/10 text-[#171717]"
-                            }`}
-                          >
-                            <p className="mb-1 text-[10px] font-semibold tracking-wide text-gris uppercase">
-                              {turno.role === "assistant" ? "Alejandra" : "Cliente"}
-                            </p>
-                            <p className="whitespace-pre-wrap">{turno.content}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </details>
+                    {turnos.length === 0 ? (
+                      <p className="text-sm text-gris">Sin mensajes registrados.</p>
+                    ) : (
+                      <details className="rounded-xl border border-beige-oscuro/70">
+                        <summary className="cursor-pointer list-none px-4 py-2 text-xs font-medium text-gris [&::-webkit-details-marker]:hidden">
+                          Ver conversación completa ({turnos.length} mensajes)
+                        </summary>
+                        <div className="flex flex-col gap-2 p-4 pt-0">
+                          {turnos.map((turno, i) => (
+                            <div
+                              key={i}
+                              className={`max-w-[85%] rounded-2xl px-4 py-2 text-sm ${
+                                turno.role === "assistant"
+                                  ? "self-start bg-morado/10 text-[#171717]"
+                                  : "self-end bg-naranja/10 text-[#171717]"
+                              }`}
+                            >
+                              <p className="mb-1 text-[10px] font-semibold tracking-wide text-gris uppercase">
+                                {turno.role === "assistant" ? "Alejandra" : "Cliente"}
+                              </p>
+                              <p className="whitespace-pre-wrap">{turno.content}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    )}
                   </div>
                 </details>
               );

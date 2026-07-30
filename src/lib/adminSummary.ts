@@ -29,7 +29,10 @@ function normalizar(parsed: unknown): ResumenIA {
   };
 }
 
-export async function generarResumenIA(turnos: Turno[]): Promise<ResumenIA> {
+// Devuelve null si la generación falló (para no guardar un resultado a medias
+// como si fuera definitivo); RESUMEN_VACIO es una respuesta válida y final
+// cuando el cliente simplemente no escribió nada todavía.
+export async function generarResumenIA(turnos: Turno[]): Promise<ResumenIA | null> {
   const mensajesCliente = turnos.filter((t) => t.role === "user");
   if (mensajesCliente.length === 0) return RESUMEN_VACIO;
 
@@ -50,21 +53,26 @@ export async function generarResumenIA(turnos: Turno[]): Promise<ResumenIA> {
       response_format: { type: "json_object" },
     });
 
-    const raw = completion.choices[0]?.message?.content ?? "{}";
+    const raw = completion.choices[0]?.message?.content;
+    if (!raw) return null;
     return normalizar(JSON.parse(raw));
   } catch (error) {
     console.error("Error al generar el resumen IA del lead:", error);
-    return RESUMEN_VACIO;
+    return null;
   }
 }
 
 // Lee el resumen ya guardado en la conversación, o lo genera y lo guarda si
-// todavía no existe. Se calcula una sola vez por conversación.
+// todavía no existe. Se calcula una sola vez por conversación: si la
+// generación falla (ej. clave de API inválida), no se guarda nada y se
+// vuelve a intentar la próxima vez que se abra el panel.
 export async function obtenerOGenerarResumen(conversacionId: string, resumenGuardado: unknown, turnos: Turno[]): Promise<ResumenIA> {
   if (resumenGuardado && typeof resumenGuardado === "object") {
     return normalizar(resumenGuardado);
   }
   const nuevoResumen = await generarResumenIA(turnos);
+  if (nuevoResumen === null) return RESUMEN_VACIO;
+
   await prisma.conversacion
     .update({ where: { id: conversacionId }, data: { resumenIA: nuevoResumen } })
     .catch((error) => console.error("Error al guardar el resumen IA:", error));
