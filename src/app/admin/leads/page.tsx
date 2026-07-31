@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
+import type { PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { prismaJulio } from "@/lib/prismaJulio";
 import { labelSenal, parseTurnos } from "@/lib/adminLeads";
-import { obtenerOGenerarResumen, type ResumenIA } from "@/lib/adminSummary";
+import { obtenerOGenerarResumen, type MarcaAsistente, type ResumenIA } from "@/lib/adminSummary";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Conversaciones — Paz Ortega",
+  title: "Conversaciones — Panel interno",
 };
 
 const MOMENTO_LABEL: Record<string, string> = {
@@ -26,11 +28,33 @@ function formatFecha(fecha: Date) {
   });
 }
 
+type Fuente = {
+  origen: string;
+  client: PrismaClient;
+  marca: MarcaAsistente;
+};
+
+const FUENTES: Fuente[] = [
+  { origen: "Paz Ortega", client: prisma, marca: { asistente: "Alejandra", empresa: "Paz Ortega" } },
+  { origen: "Soluciones de IA", client: prismaJulio, marca: { asistente: "Julio", empresa: "Soluciones de IA" } },
+];
+
+async function cargarConversaciones(fuente: Fuente) {
+  try {
+    const conversaciones = await fuente.client.conversacion.findMany({
+      include: { lead: true },
+      orderBy: { updatedAt: "desc" },
+    });
+    return conversaciones.map((conv) => ({ ...conv, origen: fuente.origen, fuente }));
+  } catch (error) {
+    console.error(`Error al leer conversaciones de ${fuente.origen}:`, error);
+    return [];
+  }
+}
+
 export default async function LeadsPage() {
-  const conversaciones = await prisma.conversacion.findMany({
-    include: { lead: true },
-    orderBy: { updatedAt: "desc" },
-  });
+  const resultados = await Promise.all(FUENTES.map(cargarConversaciones));
+  const conversaciones = resultados.flat().sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
 
   const conContacto = conversaciones.filter((c) => c.lead).length;
 
@@ -38,7 +62,10 @@ export default async function LeadsPage() {
   const resumenes = new Map<string, ResumenIA>();
   for (const conv of conversaciones) {
     const turnos = parseTurnos(conv.turnos);
-    resumenes.set(conv.id, await obtenerOGenerarResumen(conv.id, conv.resumenIA, turnos));
+    resumenes.set(
+      conv.id,
+      await obtenerOGenerarResumen(conv.fuente.client, conv.id, conv.resumenIA, turnos, conv.fuente.marca)
+    );
   }
 
   return (
@@ -49,7 +76,7 @@ export default async function LeadsPage() {
             <h1 className="text-2xl font-semibold text-[#171717]">Conversaciones</h1>
             <p className="text-sm text-gris">
               {conversaciones.length} {conversaciones.length === 1 ? "conversación" : "conversaciones"} · {conContacto}{" "}
-              con contacto capturado
+              con contacto capturado · Paz Ortega + Soluciones de IA
             </p>
           </div>
           <a
@@ -78,7 +105,7 @@ export default async function LeadsPage() {
 
               return (
                 <details
-                  key={conv.id}
+                  key={`${conv.origen}-${conv.id}`}
                   className="group rounded-2xl border border-beige-oscuro bg-white/70 p-5 open:bg-white"
                 >
                   <summary className="flex list-none cursor-pointer flex-wrap items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
@@ -99,6 +126,9 @@ export default async function LeadsPage() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
+                      <span className="rounded-full bg-naranja/20 px-3 py-1 text-xs font-medium text-[#171717]">
+                        {conv.origen}
+                      </span>
                       {conv.lead && (
                         <span className="rounded-full bg-morado px-3 py-1 text-xs font-medium text-white">
                           Contacto
@@ -165,7 +195,7 @@ export default async function LeadsPage() {
                               }`}
                             >
                               <p className="mb-1 text-[10px] font-semibold tracking-wide text-gris uppercase">
-                                {turno.role === "assistant" ? "Alejandra" : "Cliente"}
+                                {turno.role === "assistant" ? conv.fuente.marca.asistente : "Cliente"}
                               </p>
                               <p className="whitespace-pre-wrap">{turno.content}</p>
                             </div>
